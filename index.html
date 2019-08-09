@@ -1,0 +1,227 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>Intouchables - Symfony and Kubernetes</title>
+
+		<link rel="stylesheet" href="css/reset.css">
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/gridscale.css">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="lib/css/monokai.css">
+		
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				<section>
+					<h1>Intouchables</h1>
+					<h2 class="subtitle">Symfony and Kubernetes</h2>
+				</section>
+				<section>
+					<h3>About me</h3>
+					<ul>
+						<li>Marius</li>
+						<li>PHP-Developer <a href="https://gridscale.io" target="_blank">@gridscale</a></li>
+					</ul>
+				</section>
+				<section>
+					<h3>Kuber- what?</h3>
+					<p>What is Kubernetes?</p>
+					<blockquote cite="https://kubernetes.io/">
+						Production-Grade Container Orchestration
+					</blockquote>
+				</section>
+				<section>
+					<ul>
+						<li>Based on containers</li>
+						<li>Scales your application</li>
+						<li>Manages your containers</li>
+					</ul>
+
+					<aside class="notes">
+						<ul>
+							<li>Who knows what containers are?</li>
+							<li>Pull images from a registry</li>
+							<li>Scaling means horizontally, so spawning more</li>
+							<li>Managing based on healthchecks (traffic-routing, restarting)</li>
+						</ul>
+					</aside>
+				</section>
+				<section>
+					<h4>Machine level</h4>
+					<ul>
+						<li><em>One</em> Master node coordinating everything</li>
+						<li><em>n</em> worker nodes doing all the computation</li>
+					</ul>
+
+					<aside class="notes">
+						<ul>
+							<li>Can add worker nodes as needed</li>
+							<li>Master distributes workload over workers</li>
+						</ul>
+					</aside>
+				</section>
+				<section>
+					<h4>Internal</h4>
+					<ul>
+						<li class="fragment"><strong>Containers</strong> (from an images)</li>
+						<li class="fragment">combined to <strong>Pods</strong></li>
+						<li class="fragment">living in <strong>ReplicaSets</strong></li>
+						<li class="fragment">accessible via <strong>Services</strong></li>
+						<li class="fragment">exposed by <strong>Ingresses</strong></li>
+					</ul>
+
+					<aside class="notes">
+						<ul>
+							<li>Images are pulled from a registry (e.g. docker-hub, gitlab, self hosted)</li>
+							<li>Pods support health-checks (liveness and readyness)</li>
+							<li>Healtchecks with Exec, TCP port check, HTTP-GET</li>
+							<li>Pods have a unique name</li>
+							<li>Pods are like a VM, everything is accessible via localhost</li>
+							<li>Services have a persistent DNS name</li>
+							<li>Ingresses access services</li>
+							<li>Ingresses can be configure really fine (Domain, path)</li>
+							<li>IngressControllers are the dooropener, multiple available (internal network, VPN, Internet)</li>
+							<li>Persistent Volumes are also defined in the configuration</li>
+						</ul>
+					</aside>
+				</section>
+				<section>
+					<h4>tl;dr</h4>
+					<ul>
+						<li class="fragment">put your application into container images</li>
+						<li class="fragment">make sure your application is horizontally scalable</li>
+						<li class="fragment">do some monitoring, Kubernetes does not save you from shipping broken code</li>
+					</ul>
+				</section>
+				<section>
+					<h3>PHP and containers</h3>
+					<ul>
+						<li class="fragment">PHP does not understand HTTP natively</li>
+						<li class="fragment">Webserver needed</li>
+						<li class="fragment">Container style: one container, one job, one process</li>
+						<li class="fragment">We need 2 containers, a webserver and a PHP-FPM container.</li>
+					</ul>
+				</section>
+				<section>
+					<h4>Webserver imgage (nginx)</h4>
+					<pre><code data-trim data-noescape>
+FROM nginx:1.17-alpine
+
+COPY ./public /var/www/html/public
+					</code></pre>
+
+					<aside class="notes">
+						<ul>
+							<li>Add some custom config</li>
+							<li><code>envsubst</code> for dynamic configuration</li>
+						</ul>
+					</aside>
+				</section>
+				<section>
+					<h4>PHP-FPM</h4>
+					<pre><code data-trim data-noescape>
+FROM php:7.3-fpm-alpine3.10
+
+COPY ./ /var/www/html
+
+RUN bin/console cache:clear --env=prod \
+	&& chown www-data:www-data var -R
+					</code></pre>
+
+					<aside class="notes">
+						<ul>
+							<li>Some custom config and additional php modules</li>
+						</ul>
+					</aside>
+				</section>
+				<section>
+					<h4>Demo-Time</h4>
+
+					<aside class="notes">
+						<ul>
+							<li>Show quick peak into symfony application</li>
+							<li>Quick look into the Code Dockerfile</li>
+						</ul>
+					</aside>
+				</section>
+				<section>
+					<h4>The alternative way</h4>
+					<p class="fragment">Teach PHP the HTTP protocol</p>
+					<ul class="fragment">
+						<li>Solution: <code>react/http</code></li>
+						<li>Wrap the Symfony application into a React HTTP server</li>
+					</ul>
+
+					<aside class="notes">
+						<ul>
+							<li>nginx is also built, but only (!!!) for static resources (less memory consumption)</li>
+							<li>Will be routed by Ingress</li>
+						</ul>
+					</aside>
+				</section>
+				<section>
+					<h4>The Dockerfile</h4>
+					<pre><code data-trim data-noexcape>
+FROM php:7.3-cli-alpine3.10
+
+WORKDIR /opt/app
+
+COPY ./ /opt/app
+
+RUN bin/console cache:clear --env=prod
+
+EXPOSE 8080
+
+CMD ["php", "./server.php"]
+					</code></pre>
+				</section>
+				<section>
+					<h4>Demo-Time</h4>
+				</section>
+				<section>
+					<h3>Any questions?</h3>
+				</section>
+				<section>
+					<h3>Thank you!</h3>
+					<p class="fragment">P.S.: We're hiring, visit us at <a href="https://gridscale.io/" target="_blank">https://gridscale.io</a></p>
+				</section>
+			</div>
+		</div>
+
+		<script src="js/reveal.js"></script>
+
+		<script>
+			// More info about config & dependencies:
+			// - https://github.com/hakimel/reveal.js#configuration
+			// - https://github.com/hakimel/reveal.js#dependencies
+			Reveal.initialize({
+				controls: false,
+				history: true,
+				hash: true,
+				progress: true,
+				dependencies: [
+					{ src: 'plugin/markdown/marked.js' },
+					{ src: 'plugin/markdown/markdown.js' },
+					{ src: 'plugin/notes/notes.js', async: true },
+					{ src: 'plugin/highlight/highlight.js', async: true },
+					{ src: 'socket.io/socket.io.js', async: true },
+					{ src: 'plugin/notes-server/client.js', async: true },
+				]
+			});
+		</script>
+	</body>
+</html>
